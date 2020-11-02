@@ -8,32 +8,65 @@ const styles = {
   position: "absolute"
 };
 
-let gyro = new Gyroscope({frequency: 60});
-let accl = new Accelerometer({frequency: 60});
-gyro.start();
-accl.start();
-accl.addEventListener('reading', () => {
-  console.log("Acceleration along the X-axis " + accl.x);
-  console.log("Acceleration along the Y-axis " + accl.y);
-  console.log("Acceleration along the Z-axis " + accl.z);
-});
-gyro.addEventListener('reading', e => {
-  console.log("Angular velocity along the X-axis " + gyro.x);
-  console.log("Angular velocity along the Y-axis " + gyro.y);
-  console.log("Angular velocity along the Z-axis " + gyro.z);
-});
 
+const permissionsNames = [
+  "geolocation",
+  "push",
+  "midi",
+  "camera",
+  "microphone",
+  "speaker",
+  "ambient-light-sensor",
+  "accelerometer",
+  "gyroscope",
+  "magnetometer",
+]
+
+const getAllPermissions = async () => {
+  const allPermissions = []
+  // We use Promise.all to wait until all the permission queries are resolved
+  await Promise.all(
+    permissionsNames.map(async permissionName => {
+        try {
+          let permission = await navigator.permissions.query({name: permissionName})
+          console.log(permission)
+          allPermissions.push({permissionName, state: permission.state})
+        }
+        catch(e){
+          allPermissions.push({permissionName, state: 'error', errorMessage: e.toString()})
+        }
+    })
+  )
+  return allPermissions
+}
 
 const MapboxGLMap = () => {
   const [map, setMap] = useState(null);
   const mapContainer = useRef(null);
   
-  const layerTypes = ["light", "dark", "outdoors", "satellite"];
+  let gyro, accl;
+  try {
+    gyro = new window.Gyroscope({frequency: 60});
+    gyro.addEventListener('reading', () => {
+      console.log("Gyroscope xyz:", gyro.x, gyro.y, gyro.z);
+    });
+    gyro.start();
+  } catch(error) {console.log("gyroscope not found");}
+  
+  try {
+    accl = new window.Accelerometer({frequency: 60});
+    accl.addEventListener('reading', () => {
+      console.log("Accelerometer xyz:", accl.x, accl.y, accl.z);
+    });
+    accl.start();
+  } catch(error) {console.log("accelerometer not found");}
 
+  console.log(accl, gyro);
 
   useEffect(() => {
     mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_KEY;
-    const initializeMap = ({ setMap, mapContainer }) => {
+    const initializeMap = async ({ setMap, mapContainer }) => {
+      await getAllPermissions();
       const map = new mapboxgl.Map({
         container: mapContainer.current,
         style: "mapbox://styles/mapbox/streets-v11", // stylesheet location
