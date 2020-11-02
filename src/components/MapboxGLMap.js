@@ -12,6 +12,10 @@ const styles = {
 const MapboxGLMap = () => {
   const [map, setMap] = useState(null);
   const mapContainer = useRef(null);
+
+  function easing(t) {
+    return t * (2 - t);
+  }
   
   useEffect(() => {
     mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_KEY;
@@ -23,14 +27,19 @@ const MapboxGLMap = () => {
         zoom: 10
       });
 
-      let hdr = document.getElementById("header");
-      window.addEventListener('deviceorientation', event => {
-        hdr.innerText = "z: " + event.alpha + ", x: " + event.beta + "y: " + event.gamma;
-      }, true);
-
       map.on("load", () => {
         setMap(map);
         map.resize();
+
+        window.addEventListener('deviceorientation', event => {
+          map.panBy([event.alpha, event.gamma], {easing: easing});
+        }, true);
+        window.addEventListener('devicemotion', event => {
+          map.easeTo({
+            bearing: map.getBearing() - (event.acceleration.x + event.acceleration.y),
+            easing: easing
+          });
+        }, true);
       });
     };
 
